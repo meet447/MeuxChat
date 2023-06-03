@@ -9,3 +9,21 @@ Become Smart with Bard integration!
 ![meux 2](https://github.com/meet447/MeuxChat/assets/51074036/3abfd667-7fb4-4d11-9502-185923a7db2e)
 
 use the keyword 'bard' to fetch results using bard the bard result is only visible to you and not others!
+
+Installation :
+
+ $ pip3 install --upgrade GoogleBard
+ 
+ $ pip3 install flet
+  
+How to get Token for bard:
+
+Go to https://bard.google.com/
+
+F12 for console
+Copy the values
+Session: Go to Application → Cookies → __Secure-1PSID. Copy the value of that cookie.
+
+credites to https://github.com/acheong08
+ 
+ 
