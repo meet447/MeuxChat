@@ -10,20 +10,24 @@ Become Smart with Bard integration!
 
 use the keyword 'bard' to fetch results using bard the bard result is only visible to you and not others!
 
-Installation :
+**Installation** :
 
+```python
  $ pip3 install --upgrade GoogleBard
  
  $ pip3 install flet
-  
-How to get Token for bard:
+```
+
+**How to get Token for bard**:
 
 Go to https://bard.google.com/
 
+```
 F12 for console
 Copy the values
 Session: Go to Application → Cookies → __Secure-1PSID. Copy the value of that cookie.
+```
 
-credites to https://github.com/acheong08
+**credites to https://github.com/acheong08**
  
  
