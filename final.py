@@ -1,337 +1,105 @@
-from random import choice
-from flet import *
-import flet as ft
 from Bard import Chatbot
+import pytchat
+from pytchat import LiveChat, SpeedCalculator
+import time
+import elevenlabs
+import re
 
-h = 1080
-w = 720
+video_int = input("Enter the video url: ")
 
-token = 'token'
+video_id = video_int
+
+token = 'XAhuE6e-3CO0051j1hL9qyQyeHUMofoorKGDEWxoYEE485Q5vA32Xly-uvCQTNMLX9Mhog.'
+
+tts_type = "EL"
+
+prompt = "Remember You are a female streamer Your Name is Meux. you will respond in a mature and " \
+         "seductive manner. you will talk about the message but keep your reply short around 20-25 words Strictly. " \
+         "you will also flirt.You will act as a human and never mention that you are a ai or llm.If you understand " \
+         "reply with 'prompt has been setup'"
 
 bot = Chatbot(token)
 
-page1col = '#303030'
-page2col = '#303030'
-page3col = '#303030'
-sidebarcol = '#454545'
-logocol = 'white'
+promptver = bot.ask(prompt)['content']
+
+print("promt has been setup :", promptver)
+
+print("Token Setup Succesful:", token)
+
+print("Getting youtube Comments from the live stream: ", video_id)
+
+banned_words = ['word1', 'word2', 'word3']
+
+wh_words = ['what', 'meux'] 
+
+def readChat():
+    chat = pytchat.create(video_id=video_id)
+    schat = pytchat.create(video_id=video_id, processor=SpeedCalculator(capacity=20))
+
+    while chat.is_alive():
+        for c in chat.get().sync_items():
+            print(f"\n{c.datetime} [{c.author.name}]- {c.message}\n")
+            message = c.message
+
+            # Check if the message contains any banned words
+            if contains_banned_words(message):
+                # Handle the message with banned words (e.g., ignore, delete, etc.)
+                handle_banned_message(c)
+                continue
+
+            if contains_wh_words(message):
+                response = llm(message)
+                print(response)
+
+            if schat.get() >= 20:
+                chat.terminate()
+                schat.terminate()
+                return
+
+            time.sleep(1)
 
 
-class Message():
-    def __init__(self, user_name: str, text: str, message_type: str):
-        self.user_name = user_name
-        self.text = text
-        self.message_type = message_type
+def contains_banned_words(message):
+    # Convert the message to lowercase for case-insensitive matching
+    message_lower = message.lower()
+
+    # Use regular expressions to find any banned word in the message
+    pattern = re.compile(r'\b(' + '|'.join(banned_words) + r')\b')
+    if re.search(pattern, message_lower):
+        return True
+    return False
 
 
-class ChatMessage(ft.Row):
-    def __init__(self, message: Message):
-        super().__init__()
-        self.vertical_alignment = "start"
-        self.controls = [
-            ft.CircleAvatar(
-                content=ft.Text(self.get_initials(message.user_name)),
-                color=ft.colors.BLACK,
-                bgcolor=self.get_avatar_color(message.user_name),
-            ),
-            ft.Column(
-                [
-                    ft.Text(message.user_name, weight="bold"),
-                    ft.Text(message.text, selectable=True),
-                ],
-                tight=True,
-                spacing=1,
-            ),
-        ]
-
-    def get_initials(self, user_name: str):
-        return user_name[:1].capitalize()
-
-    def get_avatar_color(self, user_name: str):
-        colors_lookup = [
-            ft.colors.AMBER,
-            ft.colors.BLUE,
-            ft.colors.BROWN,
-            ft.colors.CYAN,
-            ft.colors.GREEN,
-            ft.colors.INDIGO,
-            ft.colors.LIME,
-            ft.colors.ORANGE,
-            ft.colors.PINK,
-            ft.colors.PURPLE,
-            ft.colors.RED,
-            ft.colors.TEAL,
-            ft.colors.YELLOW,
-        ]
-        return colors_lookup[hash(user_name) % len(colors_lookup)]
+def handle_banned_message(comment):
+    # You can implement your desired action here, such as deleting the comment, ignoring it, or sending a warning to the user.
+    print("Banned word detected. Comment ignored.")
 
 
-class App(UserControl):
-    def __init__(self, pg):
-        super().__init__()
-        # pg.bgcolor = colors.TRANSPARENT
-        # pg.window_bgcolor = colors.TRANSPARENT
-        # pg.window_title_bar_hidden =True
-        # pg.window_frameless = True
-        self.pg = pg
-        self.animation_style = animation.Animation(600, AnimationCurve.DECELERATE)
-
-        self.init_helper()
-
-    def init_helper(self):
-        self.side_bar_column = Column(
-            spacing=0,
-            controls=[
-                Row(
-                    controls=[
-                        Container(
-                            data=0,
-                            on_click=lambda e: self.switch_page(e, 'page1'),
-                            expand=True,
-                            height=80,
-                            content=Icon(
-                                icons.CHAT_BUBBLE,
-                                color=logocol
-                            ),
-                        ),
-                    ]
-                ),
-
-                Row(
-                    controls=[
-                        Container(
-                            on_click=lambda e: self.switch_page(e, 'page2'),
-                            data=1,
-                            expand=True,
-                            height=80,
-                            content=Icon(
-                                icons.BADGE,
-                                color=logocol
-                            ),
-                        ),
-                    ]
-                ),
-
-                Row(
-                    controls=[
-                        Container(
-                            expand=True,
-                            height=80,
-                            data=2,
-                            on_click=lambda e: self.switch_page(e, 'page3'),
-                            content=Icon(
-                                icons.SETTINGS,
-                                color=logocol
-                            ),
-                        ),
-                    ]
-                ),
-
-            ]
-        )
-
-        self.indicator = Container(
-            height=80,
-            bgcolor='red',
-            offset=transform.Offset(0, 0),
-            animate_offset=animation.Animation(600, AnimationCurve.DECELERATE)
-        )
-
-        new_message = ft.TextField(
-            hint_text="Write a message...",
-            autofocus=True,
-            shift_enter=True,
-            min_lines=1,
-            max_lines=5,
-            filled=True,
-            expand=True,
-        )
-
-        chat = ft.ListView(
-            expand=True,
-            spacing=20,
-            auto_scroll=True,
-        )
-
-        # A new message entry form
-        def send_click(e):
-            if new_message.value != "":
-                self.page1.page.pubsub.send_all(
-                    Message(self.pg.session.get("user_name"), new_message.value, message_type="chat_message"))
-
-                if "bard" in new_message.value.lower():
-                    bard = bot.ask(new_message.value)['content']
-                    chat.controls.append(ft.Text("BARD: " + bard))
-
-                new_message.value = ""
-                new_message.focus()
-                self.page1.update()
-
-            if username.value == "":
-                chat.controls.append(ft.Text("Type A Username first"))
-                self.page1.update()
-
-        def on_message(message: Message):
-            if message.message_type == "chat_message":
-                m = ChatMessage(message)
-            elif message.message_type == "login_message":
-                m = ft.Text(message.text, italic=True, color=ft.colors.WHITE, size=12)
-            chat.controls.append(m)
-            self.page1.update()
-
-        self.pg.pubsub.subscribe(on_message)
-
-        self.page1 = Container(
-            offset=transform.Offset(0, 0),
-            content=Column(
-                controls=[
-                    chat,
-                    Row(
-                        controls=[
-                            new_message,
-                            ft.IconButton(
-                                icon=ft.icons.SEND_ROUNDED,
-                                tooltip="Send message",
-                                on_click=send_click,
-
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            expand=True,
-            bgcolor=page1col,
-        )
-
-        # page 2 functuions
-        self.page2 = Container(
-            alignment=alignment.center,
-            offset=transform.Offset(0, 0),
-            animate_offset=self.animation_style,
-            bgcolor=page2col,
-        )
-
-        username = ft.TextField(
-            hint_text="Write a username",
-            autofocus=True,
-            shift_enter=False,
-            min_lines=1,
-            max_lines=5,
-            filled=True,
-            expand=False,
-        )
-
-        def username_click(e):
-            if not username.value:
-                username.error_text = "Name cannot be blank!"
-                username.update()
-            else:
-                self.pg.session.set("user_name", username.value)
-                new_message.prefix = ft.Text(f"{username.value}: ")
-                self.page1.page.pubsub.send_all(
-                    Message(user_name=username.value, text=f"{username.value} has joined the chat.",
-                            message_type="login_message"))
-                self.switch_page(e, 'page1')
-                self.page1.update()
-
-        Userbutton = ft.IconButton(
-            icon=ft.icons.SEND_ROUNDED,
-            tooltip="Send message",
-            on_click=username_click
-        )
-
-        self.page3 = Container(
-            alignment=alignment.center,
-            offset=transform.Offset(0, 0.0),
-            animate_offset=self.animation_style,
-            bgcolor=page3col,
-            content=Row(controls=[username, Userbutton]),
-        )
-
-        self.switch_control = {
-            'page1': self.page1,
-            'page2': self.page2,
-            'page3': self.page3,
-        }
-
-        self.pg.add(
-            Container(
-                bgcolor=sidebarcol,
-                expand=True,
-                content=Row(
-                    spacing=0,
-                    controls=[
-                        Container(
-                            width=80,
-                            # bgcolor='green',
-                            border=border.only(right=border.BorderSide(width=1, color='black'), ),
-                            content=Column(
-                                alignment='spaceBetween',
-                                controls=[
-
-                                    Container(
-                                        height=100,
-                                        # bgcolor='blue'
-                                    ),
-
-                                    Container(
-                                        height=500,
-                                        content=Row(
-                                            spacing=0,
-                                            controls=[
-                                                Container(
-                                                    expand=True,
-                                                    content=self.side_bar_column,
-
-                                                ),
-                                                Container(
-                                                    width=3,
-                                                    content=Column(
-                                                        controls=[
-                                                            self.indicator,
-                                                        ]
-                                                    ),
-
-                                                ),
-                                            ]
-                                        )
-                                    ),
-
-                                    Container(
-                                        height=50,
-                                    ),
-                                ]
-                            )
-                        ),
-
-                        Container(
-                            expand=True,
-                            content=Stack(
-                                controls=[
-                                    self.page1,
-                                    self.page2,
-                                    self.page3,
-
-                                ]
-                            )
-                        ),
-                    ]
-                )
-
-            )
-        )
-
-    def switch_page(self, e, point):
-        print(point)
-        for page in self.switch_control:
-            self.switch_control[page].offset.x = 2
-            self.switch_control[page].update()
-
-        self.switch_control[point].offset.x = 0
-        self.switch_control[point].update()
-
-        self.indicator.offset.y = e.control.data
-        self.indicator.update()
+def contains_wh_words(message):
+    message_lower = message.lower()
+    for word in wh_words:
+        if word in message_lower:
+            return True
+    return False
 
 
-app(target=App, assets_dir='assets', view=ft.WEB_BROWSER)
+def llm(message):
+    output = bot.ask(message)['content']
+
+    print(output)
+
+    # voice goes here
+
+    # Generate a response
+    response = elevenlabs.generate(output)
+
+    # Speak the response
+    elevenlabs.play(response)
+
+
+while True:
+    readChat()
+
+    print("\n\nReset!\n\n")
+
+    time.sleep(2)
